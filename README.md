@@ -1,2 +1,2 @@
-# wpuimportfb
-A WordPress plugin to import the latest messages for a Facebook page.
+# WPU Import FB
+A WordPress plugin to import the latest messages from a Facebook page.
