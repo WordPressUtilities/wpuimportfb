@@ -52,6 +52,21 @@ class WPUBaseCron {
         }
     }
 
+    /* Get next scheduled */
+    public function get_next_scheduled() {
+        $schedule = wp_next_scheduled($this->cronhook);
+        $seconds = $schedule - time();
+        $minutes = 0;
+        if ($seconds >= 60) {
+            $minutes = (int) ($seconds / 60);
+            $seconds = $seconds % 60;
+        }
+        return array(
+            'min' => $minutes,
+            'sec' => $seconds
+        );
+    }
+
     /* Create cron */
     public function install() {
         wp_clear_scheduled_hook($this->cronhook);

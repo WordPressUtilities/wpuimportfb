@@ -3,7 +3,7 @@
 /*
 Plugin Name: WPU Import FB
 Plugin URI: https://github.com/WordPressUtilities/wpuimportfb
-Version: 0.1
+Version: 0.1.1
 Description: Import the latest messages from a Facebook page
 Author: Darklg
 Author URI: http://darklg.me/
@@ -59,6 +59,8 @@ class WPUImportFb {
         if (isset($this->settings_values['profile_id'])) {
             $this->profile_id = $this->settings_values['profile_id'];
         }
+        $this->import_draft = (is_array($this->settings_values) && isset($this->settings_values['import_draft']) && $this->settings_values['import_draft'] == '1');
+        $this->import_external = (is_array($this->settings_values) && isset($this->settings_values['import_external']) && $this->settings_values['import_external'] == '1');
         $this->post_type_info = apply_filters('wpuimportfb_posttypeinfo', array(
             'public' => true,
             'name' => 'Facebook Post',
@@ -136,6 +138,12 @@ class WPUImportFb {
                 'type' => 'checkbox',
                 'label_check' => __('Posts are created with a draft status.', 'wpuimportfb'),
                 'label' => __('Import as draft', 'wpuimportfb')
+            ),
+            'import_external' => array(
+                'section' => 'import',
+                'type' => 'checkbox',
+                'label_check' => __('Posts from page visitors are imported.', 'wpuimportfb'),
+                'label' => __('Import external posts', 'wpuimportfb')
             )
         );
         if (is_admin()) {
@@ -166,14 +174,8 @@ class WPUImportFb {
             echo '<h2>' . __('Tools') . '</h2>';
             echo '<form action="' . admin_url('admin-post.php') . '" method="post">';
             echo '<input type="hidden" name="action" value="wpuimportfb_postaction">';
-            $schedule = wp_next_scheduled($this->cronhook);
-            $seconds = $schedule - time();
-            $minutes = 0;
-            if ($seconds >= 60) {
-                $minutes = (int) ($seconds / 60);
-                $seconds = $seconds % 60;
-            }
-            echo '<p>' . sprintf(__('Next automated import in %s’%s’’', 'wpuimportfb'), $minutes, $seconds) . '</p>';
+            $next = $this->cron->get_next_scheduled();
+            echo '<p>' . sprintf(__('Next automated import in %s’%s’’', 'wpuimportfb'), $next['min'], $next['sec']) . '</p>';
             echo '<p class="submit">';
             submit_button(__('Import now', 'wpuimportfb'), 'primary', 'import_now', false);
             echo ' ';
@@ -238,7 +240,7 @@ class WPUImportFb {
                 continue;
             }
             /* Exclude posts by others */
-            if ($item['from']->id != $this->profile_id) {
+            if (!$this->import_external && $item['from']->id != $this->profile_id) {
                 continue;
             }
             /* Create post */
@@ -268,7 +270,7 @@ class WPUImportFb {
         }
 
         $post_status = 'publish';
-        if (is_array($this->settings_values) && isset($this->settings_values['import_draft']) && $this->settings_values['import_draft'] == '1') {
+        if ($this->import_draft) {
             $post_status = 'draft';
         }
 
