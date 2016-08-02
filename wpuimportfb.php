@@ -3,7 +3,7 @@
 /*
 Plugin Name: WPU Import FB
 Plugin URI: https://github.com/WordPressUtilities/wpuimportfb
-Version: 0.1.1
+Version: 0.2
 Description: Import the latest messages from a Facebook page
 Author: Darklg
 Author URI: http://darklg.me/
@@ -72,9 +72,12 @@ class WPUImportFb {
     }
 
     public function plugins_loaded() {
+        load_plugin_textdomain('wpuimportfb', false, dirname(plugin_basename(__FILE__)) . '/lang/');
+
         if (!is_admin()) {
             return;
         }
+
         // Admin page
         add_action('admin_menu', array(&$this,
             'admin_menu'
@@ -209,7 +212,6 @@ class WPUImportFb {
                     $this->messages->set_message('imported_0', __('No new posts', 'wpuimportfb'), 'created');
                 }
             }
-
         }
         if (isset($_POST['test_api'])) {
             $items = $this->get_latest_items_for_page();
@@ -286,11 +288,15 @@ class WPUImportFb {
         // Insert the post into the database
         $post_id = wp_insert_post($item_post);
 
+        // Image
+        if ($item['picture']) {
+            $this->add_picture_to_post($item['picture'], $post_id);
+        }
+
         // Store metas
         add_post_meta($post_id, 'wpuimportfb_id', $item['id']);
         add_post_meta($post_id, 'wpuimportfb_from', $item['from']);
         add_post_meta($post_id, 'wpuimportfb_created_time', $item['created_time']);
-        add_post_meta($post_id, 'wpuimportfb_picture', $item['picture']);
         add_post_meta($post_id, 'wpuimportfb_link', $item['link']);
         add_post_meta($post_id, 'wpuimportfb_message', $item['message']);
         add_post_meta($post_id, 'wpuimportfb_story', $item['story']);
@@ -298,11 +304,44 @@ class WPUImportFb {
         return $post_id;
     }
 
+    public function add_picture_to_post($image_url, $post_id) {
+        // Add required classes
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+
+        // Upload medias
+        $image = media_sideload_image($image_url, $post_id);
+
+        // then find the last image added to the post attachments
+        $attachments = get_posts(array(
+            'numberposts' => 1,
+            'post_parent' => $post_id,
+            'post_type' => 'attachment',
+            'post_mime_type' => 'image'
+        ));
+
+        // set image as the post thumbnail
+        if (sizeof($attachments) > 0) {
+            set_post_thumbnail($post_id, $attachments[0]->ID);
+        }
+
+    }
+
     /* Items */
 
     public function get_latest_items_for_page() {
         $_items = array();
-        $json_object = $this->get_url_content("https://graph.facebook.com/{$this->profile_id}/feed?{$this->token}");
+        $_fields = array(
+            'full_picture',
+            'picture',
+            'link',
+            'message',
+            'from',
+            'story'
+        );
+        $_req_url = "https://graph.facebook.com/{$this->profile_id}/feed?{$this->token}&fields=" . implode(',', $_fields);
+        $json_object = $this->get_url_content($_req_url);
         if (!is_object($json_object) || !isset($json_object->data)) {
             return $_items;
         }
@@ -333,6 +372,10 @@ class WPUImportFb {
 
         if (isset($item->picture)) {
             $_item_parsed['picture'] = $item->picture;
+        }
+
+        if (isset($item->full_picture)) {
+            $_item_parsed['picture'] = $item->full_picture;
         }
 
         if (isset($item->link)) {
