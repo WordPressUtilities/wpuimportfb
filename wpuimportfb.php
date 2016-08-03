@@ -3,7 +3,7 @@
 /*
 Plugin Name: WPU Import FB
 Plugin URI: https://github.com/WordPressUtilities/wpuimportfb
-Version: 0.2
+Version: 0.3
 Description: Import the latest messages from a Facebook page
 Author: Darklg
 Author URI: http://darklg.me/
@@ -37,6 +37,8 @@ class WPUImportFb {
 
     public function set_options() {
         $this->post_type = apply_filters('wpuimportfb_posttypehook', 'fb_posts');
+        $this->taxonomy = apply_filters('wpuimportvimeo_taxonomy', 'fb_authors');
+
         $this->cron_interval = apply_filters('wpuimportfb_croninterval', 1800);
         $this->options = array(
             'plugin_publicname' => 'Facebook Import',
@@ -69,6 +71,14 @@ class WPUImportFb {
             'female' => false,
             'menu_icon' => 'dashicons-facebook'
         ));
+
+        $this->taxonomy_info = apply_filters('wpuimportfb_taxonomy_info', array(
+            'label' => __('Authors', 'wpuimportfb'),
+            'plural' => __('Authors', 'wpuimportfb'),
+            'name' => __('Author', 'wpuimportfb'),
+            'hierarchical' => true,
+            'post_type' => $this->post_type
+        ));
     }
 
     public function plugins_loaded() {
@@ -99,8 +109,19 @@ class WPUImportFb {
         /* Post types */
         if (class_exists('wputh_add_post_types_taxonomies')) {
             add_filter('wputh_get_posttypes', array(&$this, 'wputh_set_theme_posttypes'));
+            add_filter('wputh_get_taxonomies', array(&$this, 'wputh_set_theme_taxonomies'));
         } else {
-            register_post_type($this->post_type, $this->post_type_info);
+            /* Post type for posts */
+            register_post_type(
+                $this->post_type,
+                $this->post_type_info
+            );
+            /* Taxonomy for authors */
+            register_taxonomy(
+                $this->taxonomy,
+                $this->post_type,
+                $this->taxonomy_info
+            );
         }
 
         /* Messages */
@@ -159,6 +180,11 @@ class WPUImportFb {
     public function wputh_set_theme_posttypes($post_types) {
         $post_types[$this->post_type] = $this->post_type_info;
         return $post_types;
+    }
+
+    public function wputh_set_theme_taxonomies($taxonomies) {
+        $taxonomies[$this->taxonomy] = $this->taxonomy_info;
+        return $taxonomies;
     }
 
     /* Admin menu */
@@ -262,6 +288,29 @@ class WPUImportFb {
 
     public function create_post_from_item($item) {
 
+        /* Get taxonomy */
+        $from_id = 'taxo_author';
+        $taxo_author = false;
+        $item_cat = 'user';
+        if (is_object($item['from'])) {
+
+            $item_cat = 'user';
+            if (isset($item['from']->category)) {
+                $item_cat = $item['from']->category;
+            }
+            $from_id = strtolower($item_cat . '-' . $item['from']->id);
+            $taxo_author = get_term_by('slug', $from_id, $this->taxonomy);
+
+            /* Create it if null */
+            if (!$taxo_author) {
+                $tmp_term = wp_insert_term($item['from']->name, $this->taxonomy, array(
+                    'slug' => $from_id
+                ));
+                $taxo_author = get_term_by('id', $tmp_term['term_id'], $this->taxonomy);
+            }
+        }
+
+        /* Item details */
         $item_title = $item['message'];
         $item_text = $item['message'];
         if (!empty($item['story'])) {
@@ -287,6 +336,11 @@ class WPUImportFb {
 
         // Insert the post into the database
         $post_id = wp_insert_post($item_post);
+
+        /* Add taxo */
+        if ($taxo_author) {
+            wp_set_post_terms($post_id, array($taxo_author->term_id), $this->taxonomy);
+        }
 
         // Image
         if ($item['picture']) {
