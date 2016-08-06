@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: WPU Import Facebook\n"
-"POT-Creation-Date: 2016-08-06 22:49+0200\n"
+"POT-Creation-Date: 2016-08-06 23:20+0200\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Darklg <darklg.blog@gmail.com>\n"
 "Language-Team: \n"
@@ -15,8 +15,8 @@ msgstr ""
 "X-Poedit-KeywordsList: __;_e\n"
 "X-Poedit-SearchPath-0: ../.\n"
 
-#: .././inc/WPUBaseSettings/WPUBaseSettings.php:61 .././wpuimportfb.php:159
-#: .././wpuimportfb.php:213
+#: .././inc/WPUBaseSettings/WPUBaseSettings.php:61 .././wpuimportfb.php:175
+#: .././wpuimportfb.php:230
 msgid "Import Settings"
 msgstr "Réglages d'import"
 
@@ -40,60 +40,68 @@ msgstr "Types"
 msgid "Type"
 msgstr "Type"
 
-#: .././wpuimportfb.php:166
+#: .././wpuimportfb.php:75 .././wpuimportfb.php:76
+msgid "Profiles"
+msgstr "Pages"
+
+#: .././wpuimportfb.php:77
+msgid "Profile"
+msgstr "Page"
+
+#: .././wpuimportfb.php:182
 msgid "APP ID"
 msgstr "APP ID"
 
-#: .././wpuimportfb.php:170
+#: .././wpuimportfb.php:186
 msgid "APP Secret"
 msgstr "APP Secret"
 
-#: .././wpuimportfb.php:174
+#: .././wpuimportfb.php:190
 msgid "Token"
 msgstr "Token"
 
-#: .././wpuimportfb.php:178
+#: .././wpuimportfb.php:194
 msgid "Profile ID"
-msgstr "Profile ID"
+msgstr "Page ID"
 
-#: .././wpuimportfb.php:183
+#: .././wpuimportfb.php:199
 msgid "Posts are created with a draft status."
 msgstr "Les articles sont créés avec un statut \"brouillon\"."
 
-#: .././wpuimportfb.php:184
+#: .././wpuimportfb.php:200
 msgid "Import as draft"
 msgstr "Importer comme brouillon"
 
-#: .././wpuimportfb.php:189
+#: .././wpuimportfb.php:205
 msgid "Posts from page visitors are imported."
 msgstr "Les articles des visiteurs de la page seront importés."
 
-#: .././wpuimportfb.php:190
+#: .././wpuimportfb.php:206
 msgid "Import external posts"
 msgstr "Importer les posts externes"
 
-#: .././wpuimportfb.php:213
+#: .././wpuimportfb.php:230
 msgid "Settings"
 msgstr "Réglages"
 
-#: .././wpuimportfb.php:224
+#: .././wpuimportfb.php:241
 msgid "Tools"
 msgstr "Outils"
 
-#: .././wpuimportfb.php:228
+#: .././wpuimportfb.php:245
 #, php-format
 msgid "Next automated import in %s’%s’’"
 msgstr "Prochain import automatique dans %s min et %ss"
 
-#: .././wpuimportfb.php:230
+#: .././wpuimportfb.php:247
 msgid "Import now"
 msgstr "Importer maintenant"
 
-#: .././wpuimportfb.php:232
+#: .././wpuimportfb.php:249
 msgid "Test API"
 msgstr "Tester l'API"
 
-#: .././wpuimportfb.php:238
+#: .././wpuimportfb.php:255
 #, php-format
 msgid ""
 "You need apps infos, please <a %s>create an application here</a>, then "
@@ -102,28 +110,28 @@ msgstr ""
 "Vous avez besoin d’infos d'application, veuillez <a %s>créer une application "
 "ici</a>, puis générez le jeton."
 
-#: .././wpuimportfb.php:244
+#: .././wpuimportfb.php:261
 msgid "Save Changes"
 msgstr "Sauvegarder les modifications"
 
-#: .././wpuimportfb.php:254
+#: .././wpuimportfb.php:271
 msgid "An import is already running"
 msgstr "Une importation est déjà en cours d'exécution"
 
-#: .././wpuimportfb.php:257
+#: .././wpuimportfb.php:274
 #, php-format
 msgid "Imported posts : %s"
 msgstr "Articles importés : %s"
 
-#: .././wpuimportfb.php:259
+#: .././wpuimportfb.php:276
 msgid "No new posts"
 msgstr "Aucun nouvel article"
 
-#: .././wpuimportfb.php:266
+#: .././wpuimportfb.php:283
 msgid "The API works great !"
 msgstr "L'API fonctionne très bien !"
 
-#: .././wpuimportfb.php:268
+#: .././wpuimportfb.php:285
 msgid "The credentials seems invalid or the page do not have posts."
 msgstr ""
 "Les informations d'identification semblent invalides ou la page n'a pas "

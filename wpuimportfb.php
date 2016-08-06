@@ -3,7 +3,7 @@
 /*
 Plugin Name: WPU Import FB
 Plugin URI: https://github.com/WordPressUtilities/wpuimportfb
-Version: 0.4.1
+Version: 0.4.2
 Description: Import the latest messages from a Facebook page
 Author: Darklg
 Author URI: http://darklg.me/
@@ -59,12 +59,22 @@ class WPUImportFb {
             'post_type' => $this->post_type
         ));
 
-        /* Taxo author */
+        /* Taxo type */
         $this->taxonomy_type = apply_filters('wpuimportfb_taxonomy_type', 'fb_types');
         $this->taxonomy_type_info = apply_filters('wpuimportfb_taxonomy_type_info', array(
             'label' => __('Types', 'wpuimportfb'),
             'plural' => __('Types', 'wpuimportfb'),
             'name' => __('Type', 'wpuimportfb'),
+            'hierarchical' => true,
+            'post_type' => $this->post_type
+        ));
+
+        /* Taxo profile */
+        $this->taxonomy_profile = apply_filters('wpuimportfb_taxonomy_profile', 'fb_profiles');
+        $this->taxonomy_profile_info = apply_filters('wpuimportfb_taxonomy_profile_info', array(
+            'label' => __('Profiles', 'wpuimportfb'),
+            'plural' => __('Profiles', 'wpuimportfb'),
+            'name' => __('Profile', 'wpuimportfb'),
             'hierarchical' => true,
             'post_type' => $this->post_type
         ));
@@ -142,6 +152,12 @@ class WPUImportFb {
                 $this->post_type,
                 $this->taxonomy_type_info
             );
+            /* Taxonomy for profiles */
+            register_taxonomy(
+                $this->taxonomy_profile,
+                $this->post_type,
+                $this->taxonomy_profile_info
+            );
         }
 
         /* Messages */
@@ -203,6 +219,7 @@ class WPUImportFb {
     }
 
     public function wputh_set_theme_taxonomies($taxonomies) {
+        $taxonomies[$this->taxonomy_profile] = $this->taxonomy_profile_info;
         $taxonomies[$this->taxonomy_author] = $this->taxonomy_author_info;
         $taxonomies[$this->taxonomy_type] = $this->taxonomy_type_info;
         return $taxonomies;
@@ -324,11 +341,10 @@ class WPUImportFb {
                 FROM $wpdb->postmeta
                 WHERE meta_key = 'wpuimportfb_id'
                 AND post_id IN(
-                    SELECT post_id
-                    FROM $wpdb->postmeta
-                    WHERE meta_key = 'wpuimportfb_profileid'
-                    AND meta_value = '%d'
-                    ORDER BY meta_id DESC
+                    SELECT object_id FROM $wpdb->term_relationships
+                    LEFT JOIN $wpdb->terms
+                    ON $wpdb->terms.term_id = $wpdb->term_relationships.term_taxonomy_id
+                    WHERE $wpdb->terms.slug = 'profile-%d'
                 )
                 ORDER BY meta_id DESC
                 LIMIT 0,200", $profile_id)
@@ -362,6 +378,13 @@ class WPUImportFb {
         $taxo_type = false;
         if (!empty($item['type'])) {
             $taxo_type = $this->get_or_create_post_taxonomy($item, $this->taxonomy_type, ucwords($item['type']), $item['type']);
+        }
+
+        /* Set taxonomy profile */
+        $taxo_profile = false;
+        if (!empty($item['profile_id'])) {
+            $profile_details = $this->get_profile_details($item['profile_id']);
+            $taxo_profile = $this->get_or_create_post_taxonomy($item, $this->taxonomy_profile, ucwords($profile_details->name), 'profile-' . $item['profile_id']);
         }
 
         /* Item details */
@@ -398,6 +421,9 @@ class WPUImportFb {
         if ($taxo_type) {
             wp_set_post_terms($post_id, array($taxo_type->term_id), $this->taxonomy_type);
         }
+        if ($taxo_profile) {
+            wp_set_post_terms($post_id, array($taxo_profile->term_id), $this->taxonomy_profile);
+        }
 
         // Image
         if ($item['picture']) {
@@ -405,7 +431,6 @@ class WPUImportFb {
         }
 
         // Store metas
-        add_post_meta($post_id, 'wpuimportfb_profileid', $item['profile_id']);
         add_post_meta($post_id, 'wpuimportfb_id', $item['id']);
         if ($item['link']) {
             add_post_meta($post_id, 'wpuimportfb_link', $item['link']);
@@ -534,6 +559,22 @@ class WPUImportFb {
         }
 
         return $this->token;
+    }
+
+    /* Info */
+    public function get_profile_details($profile_id = false) {
+        if (!$profile_id) {
+            $profile_id = $this->profile_id;
+        }
+
+        /* Cache it for some time */
+        $transient_name = 'wpuimportfb_profile_details_' . $profile_id;
+        if (false === ($profile_details = get_transient($transient_name))) {
+            $profile_details = $this->get_url_content("https://graph.facebook.com/{$profile_id}?{$this->token}");
+            set_transient($transient_name, $profile_details, 12 * HOUR_IN_SECONDS);
+        }
+
+        return $profile_details;
     }
 
     /* ----------------------------------------------------------
