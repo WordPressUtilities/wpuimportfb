@@ -3,7 +3,7 @@
 /*
 Plugin Name: WPU Import FB
 Plugin URI: https://github.com/WordPressUtilities/wpuimportfb
-Version: 0.4
+Version: 0.4.1
 Description: Import the latest messages from a Facebook page
 Author: Darklg
 Author URI: http://darklg.me/
@@ -278,10 +278,21 @@ class WPUImportFb {
 
     public function import() {
         $nb_imports = 0;
+        /* Load all accounts and increment nb import */
+        $nb_imports += $this->import_account($this->profile_id);
+        /* Return number */
+        return $nb_imports;
+    }
 
+    public function import_account($profile_id = false) {
+        if (!$profile_id) {
+            $profile_id = $this->profile_id;
+        }
+
+        $nb_imports = 0;
         // Get last imported ids and import new
-        $imported_items = $this->get_last_imported_items_ids();
-        $items = $this->get_latest_items_for_page();
+        $imported_items = $this->get_last_imported_items_ids($profile_id);
+        $items = $this->get_latest_items_for_page($profile_id);
 
         foreach ($items as $item) {
             /* Exclude posts already imported */
@@ -289,7 +300,7 @@ class WPUImportFb {
                 continue;
             }
             /* Exclude posts by others */
-            if (!$this->import_external && $item['from']->id != $this->profile_id) {
+            if (!$this->import_external && $item['from']->id != $profile_id) {
                 continue;
             }
             /* Create post */
@@ -302,9 +313,27 @@ class WPUImportFb {
         return $nb_imports;
     }
 
-    public function get_last_imported_items_ids() {
+    public function get_last_imported_items_ids($profile_id = false) {
+        if (!$profile_id) {
+            $profile_id = $this->profile_id;
+        }
         global $wpdb;
-        return $wpdb->get_col("SELECT meta_value FROM $wpdb->postmeta WHERE meta_key = 'wpuimportfb_id' ORDER BY meta_id DESC LIMIT 0,200");
+        return $wpdb->get_col(
+            $wpdb->prepare("
+                SELECT meta_value
+                FROM $wpdb->postmeta
+                WHERE meta_key = 'wpuimportfb_id'
+                AND post_id IN(
+                    SELECT post_id
+                    FROM $wpdb->postmeta
+                    WHERE meta_key = 'wpuimportfb_profileid'
+                    AND meta_value = '%d'
+                    ORDER BY meta_id DESC
+                )
+                ORDER BY meta_id DESC
+                LIMIT 0,200", $profile_id)
+        );
+
     }
 
     public function get_or_create_post_taxonomy($item, $taxonomy, $name, $term_slug) {
@@ -376,6 +405,7 @@ class WPUImportFb {
         }
 
         // Store metas
+        add_post_meta($post_id, 'wpuimportfb_profileid', $item['profile_id']);
         add_post_meta($post_id, 'wpuimportfb_id', $item['id']);
         if ($item['link']) {
             add_post_meta($post_id, 'wpuimportfb_link', $item['link']);
@@ -416,7 +446,10 @@ class WPUImportFb {
 
     /* Items */
 
-    public function get_latest_items_for_page() {
+    public function get_latest_items_for_page($profile_id = false) {
+        if (!$profile_id) {
+            $profile_id = $this->profile_id;
+        }
         $_items = array();
         $_fields = array(
             'full_picture',
@@ -427,13 +460,13 @@ class WPUImportFb {
             'from',
             'story'
         );
-        $_req_url = "https://graph.facebook.com/{$this->profile_id}/feed?{$this->token}&fields=" . implode(',', $_fields);
+        $_req_url = "https://graph.facebook.com/{$profile_id}/feed?{$this->token}&fields=" . implode(',', $_fields);
         $json_object = $this->get_url_content($_req_url);
         if (!is_object($json_object) || !isset($json_object->data)) {
             return $_items;
         }
         foreach ($json_object->data as $item) {
-            $itemtmp = $this->extract_item_infos($item);
+            $itemtmp = $this->extract_item_infos($item, $profile_id);
             if ($itemtmp) {
                 $_items[] = $itemtmp;
             }
@@ -442,9 +475,10 @@ class WPUImportFb {
         return $_items;
     }
 
-    public function extract_item_infos($item) {
+    public function extract_item_infos($item, $profile_id) {
         $_item_parsed = array(
             'id' => $item->id,
+            'profile_id' => $profile_id,
             'from' => $item->from,
             'created_time' => strtotime($item->created_time),
             'picture' => '',

@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: WPU Import Facebook\n"
-"POT-Creation-Date: 2016-08-04 23:30+0200\n"
+"POT-Creation-Date: 2016-08-06 22:49+0200\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Darklg <darklg.blog@gmail.com>\n"
 "Language-Team: \n"
