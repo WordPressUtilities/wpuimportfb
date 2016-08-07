@@ -3,7 +3,7 @@
 /*
 Plugin Name: WPU Import FB
 Plugin URI: https://github.com/WordPressUtilities/wpuimportfb
-Version: 0.4.2
+Version: 0.4.3
 Description: Import the latest messages from a Facebook page
 Author: Darklg
 Author URI: http://darklg.me/
@@ -388,7 +388,10 @@ class WPUImportFb {
         }
 
         /* Item details */
-        $item_title = $item['message'];
+        $item_title = trim($item['message']);
+        if (empty($item_title)) {
+            $item_title = $item['from']->name;
+        }
         $item_text = $item['message'];
         if (!empty($item['story'])) {
             $item_text .= "\n\n" . $item['story'];
