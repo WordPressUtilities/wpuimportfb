@@ -3,7 +3,7 @@
 /*
 Plugin Name: WPU Import FB
 Plugin URI: https://github.com/WordPressUtilities/wpuimportfb
-Version: 0.4.3
+Version: 0.5
 Description: Import the latest messages from a Facebook page
 Author: Darklg
 Author URI: http://darklg.me/
@@ -27,6 +27,9 @@ class WPUImportFb {
         add_action('init', array(&$this,
             'init'
         ));
+        add_action('init', array(&$this,
+            'add_oembed'
+        ));
         add_action($this->cronhook, array(&$this,
             'import'
         ));
@@ -42,9 +45,9 @@ class WPUImportFb {
         $this->post_type = apply_filters('wpuimportfb_posttypehook', 'fb_posts');
         $this->post_type_info = apply_filters('wpuimportfb_posttypeinfo', array(
             'public' => true,
-            'name' => 'Facebook Post',
-            'label' => 'Facebook Post',
-            'plural' => 'Facebook Posts',
+            'name' => __('Facebook Post', 'wpuimportfb'),
+            'label' => __('Facebook Post', 'wpuimportfb'),
+            'plural' => __('Facebook Posts', 'wpuimportfb'),
             'female' => false,
             'menu_icon' => 'dashicons-facebook'
         ));
@@ -81,8 +84,8 @@ class WPUImportFb {
 
         $this->cron_interval = apply_filters('wpuimportfb_croninterval', 1800);
         $this->options = array(
-            'plugin_publicname' => 'Facebook Import',
-            'plugin_name' => 'Facebook Import',
+            'plugin_publicname' => __('Facebook Import', 'wpuimportfb'),
+            'plugin_name' => __('Facebook Import', 'wpuimportfb'),
             'plugin_userlevel' => 'manage_options',
             'plugin_id' => 'wpuimportfb',
             'plugin_pageslug' => 'wpuimportfb'
@@ -598,6 +601,28 @@ class WPUImportFb {
             return false;
         }
         return $_body;
+    }
+
+    /* ----------------------------------------------------------
+      Public
+    ---------------------------------------------------------- */
+
+    /* Thanks to https://github.com/khromov/wp-facebook-oembed */
+    public function add_oembed() {
+        $endpoints = array(
+            '#https?://www\.facebook\.com/video.php.*#i' => 'https://www.facebook.com/plugins/video/oembed.json/',
+            '#https?://www\.facebook\.com/.*/videos/.*#i' => 'https://www.facebook.com/plugins/video/oembed.json/',
+            '#https?://www\.facebook\.com/.*/posts/.*#i' => 'https://www.facebook.com/plugins/post/oembed.json/',
+            '#https?://www\.facebook\.com/.*/activity/.*#i' => 'https://www.facebook.com/plugins/post/oembed.json/',
+            '#https?://www\.facebook\.com/photo(s/|.php).*#i' => 'https://www.facebook.com/plugins/post/oembed.json/',
+            '#https?://www\.facebook\.com/permalink.php.*#i' => 'https://www.facebook.com/plugins/post/oembed.json/',
+            '#https?://www\.facebook\.com/media/.*#i' => 'https://www.facebook.com/plugins/post/oembed.json/',
+            '#https?://www\.facebook\.com/questions/.*#i' => 'https://www.facebook.com/plugins/post/oembed.json/',
+            '#https?://www\.facebook\.com/notes/.*#i' => 'https://www.facebook.com/plugins/post/oembed.json/'
+        );
+        foreach ($endpoints as $pattern => $endpoint) {
+            wp_oembed_add_provider($pattern, $endpoint, true);
+        }
     }
 
     /* ----------------------------------------------------------
