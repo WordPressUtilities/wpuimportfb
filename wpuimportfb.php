@@ -3,7 +3,7 @@
 /*
 Plugin Name: WPU Import FB
 Plugin URI: https://github.com/WordPressUtilities/wpuimportfb
-Version: 0.5
+Version: 0.5.1
 Description: Import the latest messages from a Facebook page
 Author: Darklg
 Author URI: http://darklg.me/
@@ -396,10 +396,11 @@ class WPUImportFb {
             $item_title = $item['from']->name;
         }
         $item_text = $item['message'];
-        if (!empty($item['story'])) {
+        if (!empty($item['story']) && $item['type'] != 'photo') {
             $item_text .= "\n\n" . $item['story'];
         }
-        if (!empty($item['link'])) {
+        /* Add link if valid, not photo, not already contained into text */
+        if (!empty($item['link']) && $item['type'] != 'photo' && strpos($item_text, $item['link']) === false) {
             $item_text .= "\n\n" . $item['link'];
         }
 
@@ -409,7 +410,7 @@ class WPUImportFb {
         }
 
         $item_post = array(
-            'post_title' => $item_title,
+            'post_title' => wp_trim_words($item_title, 10),
             'post_content' => $item_text,
             'post_date_gmt' => date('Y-m-d H:i:s', $item['created_time']),
             'post_status' => 'publish',
@@ -610,11 +611,12 @@ class WPUImportFb {
     /* Thanks to https://github.com/khromov/wp-facebook-oembed */
     public function add_oembed() {
         $endpoints = array(
+            //'#https?://www\.facebook\.com/photo(s/|.php).*#i' => 'https://www.facebook.com/plugins/post/oembed.json/',
+            //'#https?://www\.facebook\.com/.*/photo(s/|.php).*#i' => 'https://www.facebook.com/plugins/post/oembed.json/',
             '#https?://www\.facebook\.com/video.php.*#i' => 'https://www.facebook.com/plugins/video/oembed.json/',
             '#https?://www\.facebook\.com/.*/videos/.*#i' => 'https://www.facebook.com/plugins/video/oembed.json/',
             '#https?://www\.facebook\.com/.*/posts/.*#i' => 'https://www.facebook.com/plugins/post/oembed.json/',
             '#https?://www\.facebook\.com/.*/activity/.*#i' => 'https://www.facebook.com/plugins/post/oembed.json/',
-            '#https?://www\.facebook\.com/photo(s/|.php).*#i' => 'https://www.facebook.com/plugins/post/oembed.json/',
             '#https?://www\.facebook\.com/permalink.php.*#i' => 'https://www.facebook.com/plugins/post/oembed.json/',
             '#https?://www\.facebook\.com/media/.*#i' => 'https://www.facebook.com/plugins/post/oembed.json/',
             '#https?://www\.facebook\.com/questions/.*#i' => 'https://www.facebook.com/plugins/post/oembed.json/',
