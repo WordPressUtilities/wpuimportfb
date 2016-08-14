@@ -3,7 +3,7 @@
 /*
 Plugin Name: WPU Import FB
 Plugin URI: https://github.com/WordPressUtilities/wpuimportfb
-Version: 0.5.1
+Version: 0.6
 Description: Import the latest messages from a Facebook page
 Author: Darklg
 Author URI: http://darklg.me/
@@ -101,12 +101,31 @@ class WPUImportFb {
         if (isset($this->settings_values['app_secret'])) {
             $this->app_secret = $this->settings_values['app_secret'];
         }
+        $this->profile_id = false;
         if (isset($this->settings_values['profile_id'])) {
             $this->profile_id = $this->settings_values['profile_id'];
+        }
+        $this->profiles_ids = $this->get_profiles_ids();
+        if (!empty($this->profiles_ids)) {
+            $this->profile_id = $this->profiles_ids[0];
         }
         $this->import_draft = (is_array($this->settings_values) && isset($this->settings_values['import_draft']) && $this->settings_values['import_draft'] == '1');
         $this->import_external = (is_array($this->settings_values) && isset($this->settings_values['import_external']) && $this->settings_values['import_external'] == '1');
 
+    }
+
+    public function get_profiles_ids() {
+        $profiles_ids = array();
+        if (isset($this->settings_values['profiles_ids'])) {
+            $_profiles_ids = preg_replace('/\D/', "-", $this->settings_values['profiles_ids']);
+            $_profiles_ids = explode("-", $_profiles_ids);
+            foreach ($_profiles_ids as $id) {
+                if (is_numeric($id) && !in_array($id, $profiles_ids)) {
+                    $profiles_ids[] = $id;
+                }
+            }
+        }
+        return $profiles_ids;
     }
 
     public function plugins_loaded() {
@@ -176,25 +195,19 @@ class WPUImportFb {
             'sections' => array(
                 'import' => array(
                     'name' => __('Import Settings', 'wpuimportfb')
+                ),
+                'login' => array(
+                    'name' => __('Login Settings', 'wpuimportfb')
                 )
             )
         );
         $this->settings = array(
-            'app_id' => array(
+            'profiles_ids' => array(
                 'section' => 'import',
-                'label' => __('APP ID', 'wpuimportfb')
-            ),
-            'app_secret' => array(
-                'section' => 'import',
-                'label' => __('APP Secret', 'wpuimportfb')
-            ),
-            'token' => array(
-                'section' => 'import',
-                'label' => __('Token', 'wpuimportfb')
-            ),
-            'profile_id' => array(
-                'section' => 'import',
-                'label' => __('Profile ID', 'wpuimportfb')
+                'type' => 'textarea',
+                'label' => __('Profiles ID', 'wpuimportfb'),
+                'regex' => '/^([0-9\s]+)$/isU',
+                'help' => sprintf(__('One numeric ID per line. <a href="%s" target="_blank">Find IDs here</a>', 'wpuimportfb'), 'http://findmyfbid.com/')
             ),
             'import_draft' => array(
                 'section' => 'import',
@@ -207,6 +220,18 @@ class WPUImportFb {
                 'type' => 'checkbox',
                 'label_check' => __('Posts from page visitors are imported.', 'wpuimportfb'),
                 'label' => __('Import external posts', 'wpuimportfb')
+            ),
+            'app_id' => array(
+                'section' => 'login',
+                'label' => __('APP ID', 'wpuimportfb')
+            ),
+            'app_secret' => array(
+                'section' => 'login',
+                'label' => __('APP Secret', 'wpuimportfb')
+            ),
+            'token' => array(
+                'section' => 'login',
+                'label' => __('Token', 'wpuimportfb')
             )
         );
         if (is_admin()) {
@@ -297,9 +322,16 @@ class WPUImportFb {
     ---------------------------------------------------------- */
 
     public function import() {
+
+        @set_time_limit(0);
+
         $nb_imports = 0;
         /* Load all accounts and increment nb import */
-        $nb_imports += $this->import_account($this->profile_id);
+        if (is_array($this->profiles_ids)) {
+            foreach ($this->profiles_ids as $profile_id) {
+                $nb_imports += $this->import_account($profile_id);
+            }
+        }
         /* Return number */
         return $nb_imports;
     }
@@ -308,7 +340,9 @@ class WPUImportFb {
         if (!$profile_id) {
             $profile_id = $this->profile_id;
         }
-
+        if (!$profile_id) {
+            return 0;
+        }
         $nb_imports = 0;
         // Get last imported ids and import new
         $imported_items = $this->get_last_imported_items_ids($profile_id);
@@ -336,6 +370,9 @@ class WPUImportFb {
     public function get_last_imported_items_ids($profile_id = false) {
         if (!$profile_id) {
             $profile_id = $this->profile_id;
+        }
+        if (!$profile_id) {
+            return false;
         }
         global $wpdb;
         return $wpdb->get_col(
@@ -387,7 +424,9 @@ class WPUImportFb {
         $taxo_profile = false;
         if (!empty($item['profile_id'])) {
             $profile_details = $this->get_profile_details($item['profile_id']);
-            $taxo_profile = $this->get_or_create_post_taxonomy($item, $this->taxonomy_profile, ucwords($profile_details->name), 'profile-' . $item['profile_id']);
+            if (property_exists($profile_details, 'name')) {
+                $taxo_profile = $this->get_or_create_post_taxonomy($item, $this->taxonomy_profile, ucwords($profile_details->name), 'profile-' . $item['profile_id']);
+            }
         }
 
         /* Item details */
@@ -482,6 +521,9 @@ class WPUImportFb {
         if (!$profile_id) {
             $profile_id = $this->profile_id;
         }
+        if (!$profile_id) {
+            return array();
+        }
         $_items = array();
         $_fields = array(
             'full_picture',
@@ -572,6 +614,9 @@ class WPUImportFb {
     public function get_profile_details($profile_id = false) {
         if (!$profile_id) {
             $profile_id = $this->profile_id;
+        }
+        if (!$profile_id) {
+            return new stdClass();
         }
 
         /* Cache it for some time */
