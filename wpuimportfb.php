@@ -3,7 +3,7 @@
 /*
 Plugin Name: WPU Import FB
 Plugin URI: https://github.com/WordPressUtilities/wpuimportfb
-Version: 0.6
+Version: 0.6.1
 Description: Import the latest messages from a Facebook page
 Author: Darklg
 Author URI: http://darklg.me/
@@ -18,6 +18,7 @@ class WPUImportFb {
     private $app_id = '';
     private $app_secret = '';
     private $post_type = '';
+    private $is_importing = false;
 
     public function __construct() {
         $this->set_options();
@@ -322,7 +323,11 @@ class WPUImportFb {
     ---------------------------------------------------------- */
 
     public function import() {
-
+        if($this->is_importing){
+            $this->messages->set_message('already_importing', __('An import is already running', 'wpuimportfb'), 'error');
+            return 0;
+        }
+        $this->is_importing = true;
         @set_time_limit(0);
 
         $nb_imports = 0;
@@ -332,6 +337,8 @@ class WPUImportFb {
                 $nb_imports += $this->import_account($profile_id);
             }
         }
+
+        $this->is_importing = false;
         /* Return number */
         return $nb_imports;
     }
@@ -684,6 +691,16 @@ class WPUImportFb {
     public function deactivation() {
         flush_rewrite_rules();
         $this->cron->uninstall();
+    }
+
+    public function uninstall() {
+        flush_rewrite_rules();
+        $this->cron->uninstall();
+        delete_option($this->settings_details['option_id']);
+        delete_post_meta_by_key('wpuimportfb_id');
+        delete_post_meta_by_key('wpuimportfb_link');
+        delete_post_meta_by_key('wpuimportfb_message');
+        delete_post_meta_by_key('wpuimportfb_story');
     }
 }
 
