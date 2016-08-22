@@ -3,7 +3,7 @@
 /*
 Plugin Name: WPU Import FB
 Plugin URI: https://github.com/WordPressUtilities/wpuimportfb
-Version: 0.6.1
+Version: 0.6.2
 Description: Import the latest messages from a Facebook page
 Author: Darklg
 Author URI: http://darklg.me/
@@ -139,6 +139,9 @@ class WPUImportFb {
         add_action('admin_menu', array(&$this,
             'admin_menu'
         ));
+        add_filter("plugin_action_links_" . plugin_basename(__FILE__), array(&$this,
+            'add_settings_link'
+        ));
         add_action('admin_post_wpuimportfb_postaction', array(&$this,
             'postAction'
         ));
@@ -254,7 +257,16 @@ class WPUImportFb {
         return $taxonomies;
     }
 
+    /* Settings link */
+
+    public function add_settings_link($links) {
+        $settings_link = '<a href="' . $this->options['admin_url'] . '">' . __('Settings') . '</a>';
+        array_unshift($links, $settings_link);
+        return $links;
+    }
+
     /* Admin menu */
+
     public function admin_menu() {
         add_submenu_page('edit.php?post_type=' . $this->post_type, $this->options['plugin_name'] . ' - ' . __('Settings'), __('Import Settings', 'wpuimportfb'), $this->options['plugin_userlevel'], $this->options['plugin_pageslug'], array(&$this,
             'admin_settings'
@@ -323,7 +335,7 @@ class WPUImportFb {
     ---------------------------------------------------------- */
 
     public function import() {
-        if($this->is_importing){
+        if ($this->is_importing) {
             $this->messages->set_message('already_importing', __('An import is already running', 'wpuimportfb'), 'error');
             return 0;
         }
@@ -447,7 +459,7 @@ class WPUImportFb {
         }
         /* Add link if valid, not photo, not already contained into text */
         if (!empty($item['link']) && $item['type'] != 'photo' && strpos($item_text, $item['link']) === false) {
-            $item_text .= "\n\n" . $item['link'];
+            $item_text .= "\n\n" . '<a href="' . $item['link'] . '">' . $item['link'] . '</a>';
         }
 
         $post_status = 'publish';
